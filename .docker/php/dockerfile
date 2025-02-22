@@ -1,0 +1,69 @@
+FROM php:8.2-fpm
+
+ENV USER=www
+ENV GROUP=www
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    zip \
+    unzip \
+    libpq-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libbz2-dev \
+    libzip-dev \
+    libgmp-dev \
+    libicu-dev \
+    libexif-dev
+
+# Clear cache
+RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Install PHP extensions
+RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd pdo_pgsql zip bz2 gmp intl exif
+
+# Get latest Composer
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+
+#instalando Node
+ENV NVM_DIR /usr/local/nvm
+ENV NODE_VERSION 22.13.0
+
+# install nvm
+# https://github.com/creationix/nvm#install-script
+RUN curl --silent -o- https://raw.githubusercontent.com/creationix/nvm/v0.31.2/install.sh | bash
+
+# install node and npm
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+RUN source $NVM_DIR/nvm.sh \
+    && nvm install $NODE_VERSION \
+    && nvm alias default $NODE_VERSION \
+    && nvm use default
+
+# add node and npm to path so the commands are available
+ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
+ENV PATH $NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
+
+# Setup working directory
+WORKDIR /var/www/
+
+# Create User and Group
+RUN groupadd -g 1000 ${GROUP} && useradd -u 1000 -ms /bin/bash -g ${GROUP} ${USER}
+
+# Grant Permissions
+RUN chown -R ${USER}:${GROUP} /var/www
+
+# Select User
+USER ${USER}
+
+# Copy permission to selected user
+COPY --chown=${USER}:${GROUP} . .
+
+EXPOSE 9000
+
+CMD ["php-fpm"]
