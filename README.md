@@ -10,6 +10,9 @@
   composer install
   php artisan key:generate
   cp .env .env.testing
+  php artisan migrate
+  npm install
+  npm run build
 ```
 
 Now edit it and change the database configuration in .env.testing:
